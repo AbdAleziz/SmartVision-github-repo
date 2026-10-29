@@ -9,10 +9,10 @@ jobs:
   build:
     runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Python 3.8 is the last version that supports Windows 7
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.8"
           architecture: "x64"
@@ -40,7 +40,7 @@ jobs:
           if (!(Test-Path dist/SmartVision/SmartVision.exe)) { throw "SmartVision.exe not found" }
           Get-ChildItem dist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: SmartVision-Windows
           path: dist/
