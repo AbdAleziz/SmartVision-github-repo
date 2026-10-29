@@ -1,0 +1,60 @@
+name: Build Smart Vision EXE
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v6
+
+      # Python 3.8 is the last version that supports Windows 7
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.8"
+          architecture: "x64"
+
+      - name: Install packages
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.21.6 opencv-contrib-python==4.5.5.64 pyautogui==0.9.53 pyzbar==0.1.9
+          python -m pip install Pillow==8.4.0 openpyxl==3.0.10
+          python -m pip install pyinstaller==4.10 pyinstaller-hooks-contrib==2022.0
+
+      - name: Copy face cascades
+        run: |
+          python -c "import cv2,shutil,os; src=cv2.data.haarcascades; names=['haarcascade_frontalface_default.xml','haarcascade_frontalface_alt2.xml','haarcascade_fullbody.xml','haarcascade_upperbody.xml']; [shutil.copy(os.path.join(src,n),'.') for n in names if os.path.isfile(os.path.join(src,n))]"
+
+      - name: Byte-compile check
+        run: python -m compileall -q smart_vision.py svcore
+
+      - name: Lint (undefined names)
+        run: python tools/lint.py
+
+      - name: Unit tests
+        run: python tools/selftest.py
+
+      - name: UI smoke test
+        run: python tools/uitest.py
+
+      - name: Build SmartVision (no console window)
+        run: |
+          python -m PyInstaller --noconfirm --clean --windowed --name SmartVision --add-data "haarcascade_frontalface_default.xml;." --add-data "haarcascade_frontalface_alt2.xml;." --hidden-import svcore.app --hidden-import svcore.vision --hidden-import svcore.panels --hidden-import svcore.camera --hidden-import svcore.faceid --hidden-import svcore.counter --hidden-import svcore.qr_engine --hidden-import svcore.hand --hidden-import svcore.telegram --hidden-import svcore.autolock --hidden-import svcore.scanner --hidden-import svcore.photobooth --hidden-import svcore.pdfwriter --hidden-import svcore.stats --hidden-import svcore.voice --hidden-import svcore.textdraw --hidden-import pyautogui --hidden-import pyzbar.pyzbar smart_vision.py
+
+      - name: Build SmartVisionDebug (with console, shows errors)
+        run: |
+          python -m PyInstaller --noconfirm --clean --console --name SmartVisionDebug --add-data "haarcascade_frontalface_default.xml;." --hidden-import svcore.app --hidden-import svcore.vision --hidden-import svcore.panels --hidden-import pyautogui --hidden-import pyzbar.pyzbar smart_vision.py
+
+      - name: Check output
+        run: |
+          if (!(Test-Path dist/SmartVision/SmartVision.exe)) { throw "SmartVision.exe not found" }
+          Get-ChildItem dist
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: SmartVision-Windows
+          path: dist/
