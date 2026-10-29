@@ -25,17 +25,44 @@ Smart Vision Studio
 
 import os
 import sys
+import traceback
+
+
+def _crash(title, text):
+    """يكتب الخطأ في crash.log بجانب البرنامج ويعرض نافذة، ثم ينتظر (نمط console)."""
+    try:
+        base = os.path.dirname(sys.executable if getattr(sys, "frozen", False)
+                               else os.path.abspath(__file__))
+        with open(os.path.join(base, "crash.log"), "w", encoding="utf-8") as f:
+            f.write(text)
+    except Exception:
+        pass
+    try:
+        import ctypes
+        ctypes.windll.user32.MessageBoxW(0, text[-1500:], title, 0x10)
+    except Exception:
+        pass
+    try:
+        print(text)
+        input("Press Enter to close...")
+    except Exception:
+        pass
+
+
 import csv
 import time
 import queue
 import threading
 import datetime
 from collections import deque
-import tkinter as tk
-from tkinter import ttk, messagebox
-
-import numpy as np
-import cv2
+try:
+    import tkinter as tk
+    from tkinter import ttk, messagebox
+    import numpy as np
+    import cv2
+except Exception:
+    _crash("Smart Vision - import error", traceback.format_exc())
+    sys.exit(1)
 
 # ---------------------------------------------------------------------------
 # استيراد المكتبات الاختيارية (لا يتوقف البرنامج إذا لم تكن مثبتة)
@@ -947,8 +974,6 @@ class App(tk.Tk):
 if __name__ == "__main__":
     try:
         App().mainloop()
-    except Exception as exc:       # آخر شبكة أمان حتى لا يُغلق البرنامج بصمت
-        try:
-            messagebox.showerror("Smart Vision", "Fatal error:\n%s" % exc)
-        except Exception:
-            print("Fatal error:", exc)
+    except Exception:              # آخر شبكة أمان: سجل الخطأ بدل الإغلاق بصمت
+        _crash("Smart Vision - fatal error", traceback.format_exc())
+        sys.exit(1)
